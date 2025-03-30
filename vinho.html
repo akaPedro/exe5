@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triângulo de Sierpinski</title>
+    <script>
+        function colinear(p1, p2, p3) {
+            const det = p1[0] * (p2[1] - p3[1]) +
+                        p2[0] * (p3[1] - p1[1]) +
+                        p3[0] * (p1[1] - p2[1]);
+            return det === 0;
+        }
+
+        function generateTriangle() {
+            while (true) {
+                let A = [Math.random() * 400, Math.random() * 400];
+                let B = [Math.random() * 400, Math.random() * 400];
+                let C = [Math.random() * 400, Math.random() * 400];
+                if (!colinear(A, B, C)) {
+                    return [A, B, C];
+                }
+            }
+        }
+
+        function sierpinski(n, ctx) {
+            let [A, B, C] = generateTriangle();
+            let points = [A, B, C];
+            
+            let P = [Math.random() * 400, Math.random() * 400];
+            ctx.fillStyle = "black";
+            
+            for (let i = 0; i < n; i++) {
+                let vertex = points[Math.floor(Math.random() * 3)];
+                P = [(P[0] + vertex[0]) / 2, (P[1] + vertex[1]) / 2];
+                ctx.fillRect(P[0], P[1], 2, 2);
+            }
+
+            ctx.fillStyle = "red";
+            ctx.fillRect(A[0], A[1], 4, 4);
+            ctx.fillRect(B[0], B[1], 4, 4);
+            ctx.fillRect(C[0], C[1], 4, 4);
+        }
+
+        function draw() {
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+            sierpinski(15, ctx);
+        }
+    </script>
+</head>
+<body onload="draw()">
+    <h1>Triângulo de Sierpinski</h1>
+    <canvas id="canvas" width="400" height="400" style="border:1px solid black;"></canvas>
+</body>
+</html>
