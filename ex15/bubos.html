@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Cubo Colorido com TRIANGLES - WebGL</title>
+    <style>canvas { width: 600px; height: 600px; }</style>
+</head>
+<body>
+<canvas id="glcanvas"></canvas>
+
+<script>
+const canvas = document.getElementById("glcanvas");
+const gl = canvas.getContext("webgl");
+
+if (!gl) {
+    alert("WebGL não suportado");
+}
+
+// Vertex Shader
+const vsSource = `
+    attribute vec3 aPosition;
+    attribute vec3 aColor;
+    varying vec3 vColor;
+    uniform mat4 uModelViewMatrix;
+    uniform mat4 uProjectionMatrix;
+    void main(void) {
+        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aPosition, 1.0);
+        vColor = aColor;
+    }
+`;
+
+// Fragment Shader
+const fsSource = `
+    precision mediump float;
+    varying vec3 vColor;
+    void main(void) {
+        gl_FragColor = vec4(vColor, 1.0);
+    }
+`;
+
+// Compilação dos shaders
+function compileShader(src, type) {
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, src);
+    gl.compileShader(shader);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert(gl.getShaderInfoLog(shader));
+        return null;
+    }
+    return shader;
+}
+
+const vertexShader = compileShader(vsSource, gl.VERTEX_SHADER);
+const fragmentShader = compileShader(fsSource, gl.FRAGMENT_SHADER);
+
+// Programa
+const shaderProgram = gl.createProgram();
+gl.attachShader(shaderProgram, vertexShader);
+gl.attachShader(shaderProgram, fragmentShader);
+gl.linkProgram(shaderProgram);
+gl.useProgram(shaderProgram);
+
+// Localizações dos atributos e uniformes
+const aPosition = gl.getAttribLocation(shaderProgram, "aPosition");
+const aColor = gl.getAttribLocation(shaderProgram, "aColor");
+const uModelViewMatrix = gl.getUniformLocation(shaderProgram, "uModelViewMatrix");
+const uProjectionMatrix = gl.getUniformLocation(shaderProgram, "uProjectionMatrix");
+
+// Dados brutos de posição e cor dos vértices (36 vértices = 12 triângulos)
+const vertices = new Float32Array([
+    // Frente (vermelho)
+    -1, -1,  1,   1, 0, 0,
+     1, -1,  1,   1, 0, 0,
+     1,  1,  1,   1, 0, 0,
+    -1, -1,  1,   1, 0, 0,
+     1,  1,  1,   1, 0, 0,
+    -1,  1,  1,   1, 0, 0,
+
+    // Trás (verde)
+    -1, -1, -1,   0, 1, 0,
+    -1,  1, -1,   0, 1, 0,
+     1,  1, -1,   0, 1, 0,
+    -1, -1, -1,   0, 1, 0,
+     1,  1, -1,   0, 1, 0,
+     1, -1, -1,   0, 1, 0,
+
+    // Esquerda (azul)
+    -1, -1, -1,   0, 0, 1,
+    -1, -1,  1,   0, 0, 1,
+    -1,  1,  1,   0, 0, 1,
+    -1, -1, -1,   0, 0, 1,
+    -1,  1,  1,   0, 0, 1,
+    -1,  1, -1,   0, 0, 1,
+
+    // Direita (amarelo)
+     1, -1, -1,   1, 1, 0,
+     1,  1, -1,   1, 1, 0,
+     1,  1,  1,   1, 1, 0,
+     1, -1, -1,   1, 1, 0,
+     1,  1,  1,   1, 1, 0,
+     1, -1,  1,   1, 1, 0,
+
+    // Topo (ciano)
+    -1, 1, -1,   0, 1, 1,
+    -1, 1,  1,   0, 1, 1,
+     1, 1,  1,   0, 1, 1,
+    -1, 1, -1,   0, 1, 1,
+     1, 1,  1,   0, 1, 1,
+     1, 1, -1,   0, 1, 1,
+
+    // Base (magenta)
+    -1, -1, -1,   1, 0, 1,
+     1, -1, -1,   1, 0, 1,
+     1, -1,  1,   1, 0, 1,
+    -1, -1, -1,   1, 0, 1,
+     1, -1,  1,   1, 0, 1,
+    -1, -1,  1,   1, 0, 1,
+]);
+
+// Buffer de vértices
+const vertexBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+// Ativando atributos
+const stride = 6 * Float32Array.BYTES_PER_ELEMENT;
+gl.vertexAttribPointer(aPosition, 3, gl.FLOAT, false, stride, 0);
+gl.enableVertexAttribArray(aPosition);
+gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, stride, 3 * Float32Array.BYTES_PER_ELEMENT);
+gl.enableVertexAttribArray(aColor);
+
+// Matrizes de projeção e visão
+function getProjectionMatrix(fov, aspect, near, far) {
+    const f = 1.0 / Math.tan(fov / 2);
+    return new Float32Array([
+        f / aspect, 0, 0, 0,
+        0, f, 0, 0,
+        0, 0, (far+near)/(near-far), -1,
+        0, 0, (2*far*near)/(near-far), 0
+    ]);
+}
+
+function drawScene() {
+    gl.clearColor(0.1, 0.1, 0.1, 1.0);
+    gl.enable(gl.DEPTH_TEST);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+    const aspect = canvas.clientWidth / canvas.clientHeight;
+    const projection = getProjectionMatrix(Math.PI / 4, aspect, 0.1, 100.0);
+    const modelView = mat4.create();
+    mat4.translate(modelView, modelView, [0, 0, -6]);
+    mat4.rotateY(modelView, modelView, performance.now() / 1000);
+
+    gl.uniformMatrix4fv(uProjectionMatrix, false, projection);
+    gl.uniformMatrix4fv(uModelViewMatrix, false, modelView);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 36);
+
+    requestAnimationFrame(drawScene);
+}
+
+// Matriz utilitária
+const mat4 = {
+    create: () => new Float32Array([1, 0, 0, 0,
+                                    0, 1, 0, 0,
+                                    0, 0, 1, 0,
+                                    0, 0, 0, 1]),
+    translate: (out, a, v) => {
+        out[12] = a[12] + v[0];
+        out[13] = a[13] + v[1];
+        out[14] = a[14] + v[2];
+    },
+    rotateY: (out, a, rad) => {
+        const s = Math.sin(rad), c = Math.cos(rad);
+        out[0] = c; out[2] = -s;
+        out[8] = s; out[10] = c;
+    }
+};
+
+drawScene();
+</script>
+</body>
+</html>
